@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Toaster, toast } from "react-hot-toast";
 import ReactPaginateModule from "react-paginate";
 import type { ReactPaginateProps } from "react-paginate";
@@ -15,7 +15,6 @@ import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import MovieModal from "../MovieModal/MovieModal";
 
 type ModuleWithDefault<T> = { default: T };
-
 const ReactPaginate = (
   ReactPaginateModule as unknown as ModuleWithDefault<
     ComponentType<ReactPaginateProps>
@@ -27,22 +26,29 @@ const App = () => {
   const [page, setPage] = useState<number>(1);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, isSuccess } = useQuery({
     queryKey: ["movies", searchQuery, page],
     queryFn: async () => {
-      const responseData = await fetchMovies(searchQuery, page);
-
-      if (responseData.results.length === 0) {
-        toast.error("No movies found for your request.");
-      }
-      return responseData;
+      return await fetchMovies(searchQuery, page);
     },
     enabled: searchQuery.length > 0,
+    placeholderData: keepPreviousData,
   });
+
+  useEffect(() => {
+    if (isSuccess && data && data.results.length === 0) {
+      toast.error("No movies found for your request.");
+    }
+  }, [isSuccess, data]);
 
   const handleSearchSubmit = (query: string): void => {
     setSearchQuery(query);
     setPage(1);
+  };
+
+  const handlePageChange = (selectedItem: { selected: number }): void => {
+    setPage(selectedItem.selected + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSelectMovie = (movie: Movie): void => {
@@ -69,16 +75,12 @@ const App = () => {
           <MovieGrid movies={movies} onSelect={handleSelectMovie} />
         )}
 
-        {}
         {!isLoading && !isError && totalPages > 1 && (
           <ReactPaginate
             pageCount={totalPages}
             pageRangeDisplayed={5}
             marginPagesDisplayed={1}
-            onPageChange={({ selected }) => {
-              setPage(selected + 1);
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
+            onPageChange={handlePageChange}
             forcePage={page - 1}
             containerClassName={css.pagination}
             activeClassName={css.active}
