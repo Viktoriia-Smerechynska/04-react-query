@@ -13,18 +13,22 @@ const tmdbApi = axios.create({
   },
 });
 
-interface TmdbResponse {
+export interface TmdbResponse {
   page: number;
   results: Movie[];
   total_pages: number;
   total_results: number;
 }
 
-export const fetchMovies = async (query: string): Promise<Movie[]> => {
+export const fetchMovies = async (
+  query: string,
+  page: number,
+): Promise<TmdbResponse> => {
   const response = await tmdbApi.get<TmdbResponse>("/search/movie", {
     params: {
       query,
+      page,
     },
   });
-  return response.data.results;
+  return response.data;
 };
